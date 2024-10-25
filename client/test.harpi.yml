@@ -1,0 +1,11 @@
+
+variables:
+  #baseUrl: "http://127.0.0.1:8001"
+  baseUrl: "http://localhost:8001"
+
+requests:
+  - url: $(baseUrl)
+    method: get
+    asserts:
+      statusCodeEquals: 200
+     
