@@ -53,8 +53,10 @@ int main() {
 
 
     SOCKET client_socket;
+    struct sockaddr_in client_addr;
+    int client_len = sizeof(client_addr);
     while(1){
-        client_socket = accept(server_socket, NULL, NULL);
+        client_socket = accept(server_socket, (struct sockaddr*)&client_addr, &client_len);
         if(client_socket == INVALID_SOCKET){
             printf("Accept failed: %d\n", WSAGetLastError());
             closesocket(server_socket);
@@ -76,21 +78,6 @@ int main() {
 
     closesocket(server_socket);
     WSACleanup();
-
-    //int server_socket;
-    //server_socket = socket(AF_INET, SOCK_STREAM, 0);
-    //struct sockaddr_in server_address;
-
-    //bind(server_socket, (struct sockaddr *) &server_address, sizeof(server_address));
-    //listen(server_socket, 5);
-
-    //int client_socket;
-    //while(1){
-    //    client_socket = accept(server_socket, NULL,NULL);
-    //    send(client_socket, http_header, sizeof(http_header), 0);
-    //    close(client_socket);
-    //}
-    printf("reached end");
 
     return 0;
 }
