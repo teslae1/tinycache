@@ -1,7 +1,7 @@
 
 variables:
   #baseUrl: "http://127.0.0.1:8001"
-  baseUrl: "http://localhost:8001"
+  baseUrl: "http://localhost:8001/path123"
 
 requests:
   - url: $(baseUrl)

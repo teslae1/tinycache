@@ -5,6 +5,7 @@
 #include <ws2tcpip.h>
 
 #pragma comment(lib, "ws2_32.lib")
+#define BUFFER_SIZE 1024
 
 
 int main() {
@@ -54,6 +55,7 @@ int main() {
 
     SOCKET client_socket;
     struct sockaddr_in client_addr;
+    char buffer[BUFFER_SIZE];
     int client_len = sizeof(client_addr);
     while(1){
         client_socket = accept(server_socket, (struct sockaddr*)&client_addr, &client_len);
@@ -63,6 +65,35 @@ int main() {
             WSACleanup();
             return 1;
         }
+
+        int bytes_read = recv(client_socket, buffer, BUFFER_SIZE - 1, 0);
+        if(bytes_read < 0){
+            printf("recv failed: %d\n", WSAGetLastError());
+            closesocket(client_socket);
+            continue;
+        }
+        buffer[bytes_read] = '\0';
+        char *request_line = strtok(buffer, "\r\n");
+
+        if(request_line == NULL){
+            printf("no request line");
+            closesocket(client_socket);
+            continue;
+        }
+
+        char method[16], path[256], version[16];
+        sscanf(request_line, "%s %s %s", method, path, version);
+        printf("method was: %s\n", method);
+            char *key = path + 1;
+        if(strcmp(method, "GET") == 0){
+            printf("key was %s\n", key);
+
+        }
+        else if(strcmp(method, "PUT") == 0){
+            printf("PUT not implemented yet");
+        }
+
+        free(key);
 
         iResult = send(client_socket, http_header, strlen(http_header), 0);
         if(iResult == SOCKET_ERROR){
