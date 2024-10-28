@@ -3,6 +3,7 @@
 #include <string.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include "hashtable.c"
 
 #pragma comment(lib, "ws2_32.lib")
 #define BUFFER_SIZE 1024
@@ -49,9 +50,17 @@ int main() {
     printf("Server is listening on port 8001...\n");
 
     char response_data[2048] = "<html>FROMSERVER</html>";
+    char httpversion[256] = "HTTP/1.1";
     char http_header[2048];
-    sprintf(http_header, "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: %d\r\n\r\n%s", (int)strlen(response_data), response_data);
+    sprintf(http_header, "%s 200 OK\r\nContent-Type: text/html\r\nContent-Length: %d\r\n\r\n%s", httpversion, (int)strlen(response_data), response_data);
 
+    char notfound_response[256];
+    sprintf(notfound_response, "%s %s", httpversion, "404 NOT FOUND\r\nContent-Type: text/html\r\nContent-Length: 0\r\n\r\n");
+
+    HashTable *table = createTable();
+    insert(table, "MYKEY", "MYVAL");
+    char val = get(table, "MYKEY");
+    printf("Gotten value: %s", val);
 
     SOCKET client_socket;
     struct sockaddr_in client_addr;
@@ -86,8 +95,17 @@ int main() {
         printf("method was: %s\n", method);
             char *key = path + 1;
         if(strcmp(method, "GET") == 0){
-            printf("key was %s\n", key);
-
+            printf("trying to get by key %s\n", key);
+            char val = get(table, key);
+            printf("got val: %s\n", val);
+            if(val == NULL){
+                printf("did not find - now sending 404 response");
+                iResult = send(client_socket, notfound_response, strlen(notfound_response), 0);
+            }
+            else{
+                printf("did find - now sending 200 response");
+                iResult = send(client_socket, http_header, strlen(http_header), 0);
+            }
         }
         else if(strcmp(method, "PUT") == 0){
             printf("PUT not implemented yet");
@@ -95,7 +113,6 @@ int main() {
 
         free(key);
 
-        iResult = send(client_socket, http_header, strlen(http_header), 0);
         if(iResult == SOCKET_ERROR){
             printf("Send failed: %d\n", WSAGetLastError());
             closesocket(client_socket);
