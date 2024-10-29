@@ -5,7 +5,18 @@ variables:
 
 requests:
   - url: $(baseUrl)
+    method: put
+    jsonBody:
+      val: "{'name': 'karl'}"
+      
+    asserts:
+      statusCodeEquals: 200
+
+  - url: $(baseUrl)
     method: get
     asserts:
       statusCodeEquals: 200
+      javascriptAsserts:
+        - code: "response.name == 'karl'"
+
      

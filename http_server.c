@@ -8,6 +8,19 @@
 #pragma comment(lib, "ws2_32.lib")
 #define BUFFER_SIZE 1024
 
+char* readBody(char *buffer, int bytes_read){
+    int content_length = 0;
+    //char *header = strtok(buffer, "\r\n");
+    //while(header != NULL && header[0] != '\0'){
+    //    if(strncmp(header, "Content-Length:", 15) == 0){
+    //        content_length = atoi(header + 15);
+    //    }
+    //    header = strtok(NULL, "\r\n");
+    //}
+    //return header;
+    return NULL;
+}
+
 
 int main() {
 
@@ -49,25 +62,18 @@ int main() {
 
     printf("Server is listening on port 8001...\n");
 
-    char response_data[2048] = "<html>FROMSERVER</html>";
     char httpversion[256] = "HTTP/1.1";
-    char http_header[2048];
-    sprintf(http_header, "%s 200 OK\r\nContent-Type: text/html\r\nContent-Length: %d\r\n\r\n%s", httpversion, (int)strlen(response_data), response_data);
 
     char notfound_response[256];
     sprintf(notfound_response, "%s %s", httpversion, "404 NOT FOUND\r\nContent-Type: text/html\r\nContent-Length: 0\r\n\r\n");
 
     HashTable *table = createTable();
-    insert(table, "MYKEY", "MYVAL");
-    char val = get(table, "MYKEY");
-    printf("Gotten value: %s", val);
+    insert(table, "MYKEY", "{\"name\": \"emma\"}");
 
     SOCKET client_socket;
-    struct sockaddr_in client_addr;
     char buffer[BUFFER_SIZE];
-    int client_len = sizeof(client_addr);
     while(1){
-        client_socket = accept(server_socket, (struct sockaddr*)&client_addr, &client_len);
+        client_socket = accept(server_socket, NULL,NULL);
         if(client_socket == INVALID_SOCKET){
             printf("Accept failed: %d\n", WSAGetLastError());
             closesocket(server_socket);
@@ -82,7 +88,9 @@ int main() {
             continue;
         }
         buffer[bytes_read] = '\0';
-        char *request_line = strtok(buffer, "\r\n");
+        char* buffer_copy = (char *)malloc(BUFFER_SIZE);
+        strcpy(buffer_copy, buffer);
+        char *request_line = strtok(buffer_copy, "\r\n");
 
         if(request_line == NULL){
             printf("no request line");
@@ -96,19 +104,27 @@ int main() {
             char *key = path + 1;
         if(strcmp(method, "GET") == 0){
             printf("trying to get by key %s\n", key);
-            char val = get(table, key);
+            char *val = get(table, key);
             printf("got val: %s\n", val);
             if(val == NULL){
                 printf("did not find - now sending 404 response");
                 iResult = send(client_socket, notfound_response, strlen(notfound_response), 0);
             }
             else{
-                printf("did find - now sending 200 response");
+                char response_data[2048];
+                sprintf(response_data, val);
+                char http_header[2048];
+                sprintf(http_header, "%s 200 OK\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s", httpversion, (int)strlen(response_data), response_data);
                 iResult = send(client_socket, http_header, strlen(http_header), 0);
+                free(http_header);
+                free(response_data);
             }
         }
         else if(strcmp(method, "PUT") == 0){
-            printf("PUT not implemented yet");
+            char *body = readBody(buffer, bytes_read);
+            printf("PUT \n");
+            printf("body: %s\n", body);
+            free(body);
         }
 
         free(key);
@@ -120,6 +136,8 @@ int main() {
         }
 
         Sleep(100);
+        free(buffer_copy);
+        free(request_line);
 
         closesocket(client_socket);
     }
@@ -129,3 +147,4 @@ int main() {
 
     return 0;
 }
+
