@@ -20,16 +20,19 @@ C:\Program Files (x86)\Windows Kits\10\Lib\10.0.19041.0\um\arm64\httpapi.lib
   - [X] code the get method and make sure it works
   - [X] try to respond with json of that data
     - [X] fix get method silent error - compile and run right now errors
-      - consider using gdb to get the runtime err handler
 - [-] support setting the value by key
-  - [-] take incoming body value and extract to str
+  - [X] take incoming body value and extract to str
     - finish the readBody method
-    - [-] get the content-length
-    - [ ] use that to read the body
+    - [X] get the content-length
+    - [X] use that to read the body
+  - [ ] respond ok by the new method
+  - [ ] reuse that method for the get response
 - [ ] make sure the incoming request can take into account a big size of json
 - [ ] consider extracting some sub functions
 - [ ] should one free *val inside while loop or is that another part of the systems responsability
 - [ ] figure out if for loop inside of hashtable should discard pointers on existing instead of override values?
+- [ ] handle null from read body by bad request
+- [ ] in insert - when encountering something that is existing, figure out if should free that
 - [ ] run through entire program an search for things that are not free
 - [ ] check all warnings
 - [ ] combine the two codebases nicely

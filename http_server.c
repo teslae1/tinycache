@@ -10,15 +10,25 @@
 
 char* readBody(char *buffer, int bytes_read){
     int content_length = 0;
-    //char *header = strtok(buffer, "\r\n");
-    //while(header != NULL && header[0] != '\0'){
-    //    if(strncmp(header, "Content-Length:", 15) == 0){
-    //        content_length = atoi(header + 15);
-    //    }
-    //    header = strtok(NULL, "\r\n");
-    //}
-    //return header;
-    return NULL;
+    //split buffer into string seperated by \r\n
+    char *header = strtok(buffer, "\r\n");
+    char *secondLastRead;
+    while(header != NULL && header[0] != '\0'){
+        if(strncmp(header, "Content-Length:", 15) == 0){
+            content_length = atoi(header + 15);
+        }
+        //get the next token seperated by \r\n from the current header
+        secondLastRead = header;
+        header = strtok(NULL, "\r\n");
+    }
+    if(content_length == 0){
+        return NULL;
+    }
+    return secondLastRead;
+}
+
+int sendOKresponse(){
+
 }
 
 
@@ -122,9 +132,11 @@ int main() {
         }
         else if(strcmp(method, "PUT") == 0){
             char *body = readBody(buffer, bytes_read);
-            printf("PUT \n");
-            printf("body: %s\n", body);
-            free(body);
+            if(body == NULL){
+                printf("ERROR");
+            }
+            insert(table, key, body);
+            iResult = sendOKresponse("succesfully cached");
         }
 
         free(key);
