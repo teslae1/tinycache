@@ -8,6 +8,7 @@
 #pragma comment(lib, "ws2_32.lib")
 #define BUFFER_SIZE 2048
 #define HTTP_VERSION "HTTP/1.1"
+#define PORT 8001
 
 char* readBody(SOCKET *buffer, int bytes_read){
     int content_length = 0;
@@ -37,55 +38,101 @@ int sendOKresponse(SOCKET *client_socket, char* bodyStr){
     return iResult;
 }
 
-int main() {
+typedef struct{
+    int result;
+    SOCKET server_socket;
+} serverSetup;
 
-    int iResult;
+serverSetup* setupServerListen(int port){
+    serverSetup *setup = (serverSetup*)malloc (sizeof(serverSetup));
+    setup->result = 0;
     WSADATA wsaData;
-    iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
-    if(iResult != 0){
+    setup->result = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if(setup->result != 0){
         printf("WSAStartup failed: %d\n", WSAGetLastError());
         WSACleanup();
-        return 1;
+        return setup;
     }
 
-    SOCKET server_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if(server_socket == INVALID_SOCKET){
+    setup->server_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if(setup->server_socket == INVALID_SOCKET){
         printf("Socket creation failed: %d\n", WSAGetLastError());
         WSACleanup();
-        return 1;
+        return setup;
     }
 
     struct sockaddr_in server_address;
     server_address.sin_family = AF_INET;
-    server_address.sin_port = htons(8001);
+    server_address.sin_port = htons(port);
     server_address.sin_addr.s_addr = INADDR_ANY;
 
-    iResult = bind(server_socket, (struct sockaddr*)&server_address, sizeof(server_address));
-    if(iResult == SOCKET_ERROR){
+    setup->result = bind(setup->server_socket, (struct sockaddr*)&server_address, sizeof(server_address));
+    if(setup->result == SOCKET_ERROR){
         printf("Bind failed: %d\n", WSAGetLastError());
         WSACleanup();
-        return 1;
+        return setup;
     }
 
-    iResult = listen(server_socket, SOMAXCONN);
-    if(iResult == SOCKET_ERROR){
+    setup->result = listen(setup->server_socket, SOMAXCONN);
+    if(setup->result == SOCKET_ERROR){
         printf("Listen failed: %d\n", WSAGetLastError());
-        closesocket(server_socket);
+        closesocket(setup->server_socket);
         WSACleanup();
-        return 1;
+        return setup;
     }
 
-    printf("Server is listening on port 8001...\n");
+    return setup;
+}
+
+typedef struct {
+    int result;
+    char* method;
+    char* path;
+    char* version;
+    char* buffer;
+    int bytes_read;
+} clientRequest;
+
+clientRequest* extractClientRequest(SOCKET* client_socket, int buffer_size)
+{
+    clientRequest *request = (clientRequest*) malloc(sizeof(clientRequest));
+    request->result = 0;
+    request->method = char[16];
+    char buffer[buffer_size];
+
+    request->bytes_read = recv(client_socket, buffer, buffer_size - 1, 0);
+    if(request->bytes_read < 0){
+        printf("recv failed: %d\n", WSAGetLastError());
+        request->result = 1;
+        return request;
+    }
+    buffer[request->bytes_read] = '\0';
+    char* buffer_copy = (char *)malloc(buffer_size);
+    strcpy(buffer_copy, buffer);
+    char *request_line = strtok(buffer_copy, "\r\n");
+
+    if(request_line == NULL){
+        printf("no request line");
+        request->result = 1;
+        return request;
+    }
 
 
+    char method[16], path[256], version[16];
+    sscanf(request_line, "%s %s %s", request->method, request->path, request->version);
+    free(buffer_copy);
+    free(request_line);
+    return request;
+}
+
+void runClientSocketListenLoop(SOCKET *server_socket, int buffer_size){
+    int iResult;
     char notfound_response[256];
     sprintf(notfound_response, "%s %s", HTTP_VERSION, "404 NOT FOUND\r\nContent-Type: text/html\r\nContent-Length: 0\r\n\r\n");
 
     HashTable *table = createTable();
-    insert(table, "MYKEY", "{\"name\": \"emma\"}");
 
     SOCKET client_socket;
-    char buffer[BUFFER_SIZE];
     while(1){
         client_socket = accept(server_socket, NULL,NULL);
         if(client_socket == INVALID_SOCKET){
@@ -95,28 +142,14 @@ int main() {
             return 1;
         }
 
-        int bytes_read = recv(client_socket, buffer, BUFFER_SIZE - 1, 0);
-        if(bytes_read < 0){
-            printf("recv failed: %d\n", WSAGetLastError());
-            closesocket(client_socket);
-            continue;
-        }
-        buffer[bytes_read] = '\0';
-        char* buffer_copy = (char *)malloc(BUFFER_SIZE);
-        strcpy(buffer_copy, buffer);
-        char *request_line = strtok(buffer_copy, "\r\n");
-
-        if(request_line == NULL){
-            printf("no request line");
+        clientRequest *request = extractClientRequest(client_socket, buffer_size);
+        if(request->result == 1){
             closesocket(client_socket);
             continue;
         }
 
-        char method[16], path[256], version[16];
-        sscanf(request_line, "%s %s %s", method, path, version);
-        printf("method was: %s\n", method);
-            char *key = path + 1;
-        if(strcmp(method, "GET") == 0){
+            char *key = request->path + 1;
+        if(strcmp(request->method, "GET") == 0){
             printf("trying to get by key %s\n", key);
             char *val = get(table, key);
             printf("got val: %s\n", val);
@@ -128,8 +161,8 @@ int main() {
                 iResult = sendOKresponse(client_socket, val);
             }
         }
-        else if(strcmp(method, "PUT") == 0){
-            char *body = readBody(buffer, bytes_read);
+        else if(strcmp(request->method, "PUT") == 0){
+            char *body = readBody(request->buffer, request->bytes_read);
             if(body == NULL){
                 printf("ERROR");
             }
@@ -146,14 +179,26 @@ int main() {
         }
 
         Sleep(100);
-        free(buffer_copy);
-        free(request_line);
 
         closesocket(client_socket);
+        free(request);
+    }
+}
+
+int main() {
+
+    serverSetup *setup = setupServerListen(PORT);
+    if(setup->result == SOCKET_ERROR){
+        return 1;
     }
 
-    closesocket(server_socket);
+    printf("Server is listening on port %d...\n", PORT);
+
+    runClientSocketListenLoop(setup->server_socket, BUFFER_SIZE);
+
+    closesocket(setup->server_socket);
     WSACleanup();
+    free(setup);
 
     return 0;
 }

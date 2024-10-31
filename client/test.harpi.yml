@@ -20,7 +20,9 @@ requests:
       statusCodeEquals: 200
       javascriptAsserts:
         - code: "response.name == '$(name)'"
+          name: "name is correct"
         - code: "response.description == '$(description)'"
+          name: "description is correct"
 
   - url: $(baseUrl)
     method: put
@@ -36,6 +38,8 @@ requests:
       statusCodeEquals: 200
       javascriptAsserts:
         - code: "response.name == '$(name)'"
+          name: "name is correct"
         - code: "response.description == '$(updatedDescription)'"
+          name: "name is updated correct"
 
      
