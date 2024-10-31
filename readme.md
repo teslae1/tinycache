@@ -25,10 +25,16 @@ C:\Program Files (x86)\Windows Kits\10\Lib\10.0.19041.0\um\arm64\httpapi.lib
     - finish the readBody method
     - [X] get the content-length
     - [X] use that to read the body
-  - [ ] respond ok by the new method
-  - [ ] reuse that method for the get response
-- [ ] make sure the incoming request can take into account a big size of json
-- [ ] consider extracting some sub functions
+  - [X] respond ok by the new method
+  - [X] reuse that method for the get responsk
+- [X] make sure the incoming request can take into account a big size of json
+- [-] consider extracting some sub functions
+  - [-] server setup
+  - [ ] run socket listen loop
+  - [ ] extract incoming request from client
+  - [ ] handle get 
+  - [ ] handle put
+- [ ] make sure error 400 on too big incoming
 - [ ] should one free *val inside while loop or is that another part of the systems responsability
 - [ ] figure out if for loop inside of hashtable should discard pointers on existing instead of override values?
 - [ ] handle null from read body by bad request

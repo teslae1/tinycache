@@ -6,9 +6,10 @@
 #include "hashtable.c"
 
 #pragma comment(lib, "ws2_32.lib")
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 2048
+#define HTTP_VERSION "HTTP/1.1"
 
-char* readBody(char *buffer, int bytes_read){
+char* readBody(SOCKET *buffer, int bytes_read){
     int content_length = 0;
     //split buffer into string seperated by \r\n
     char *header = strtok(buffer, "\r\n");
@@ -27,10 +28,14 @@ char* readBody(char *buffer, int bytes_read){
     return secondLastRead;
 }
 
-int sendOKresponse(){
-
+int sendOKresponse(SOCKET *client_socket, char* bodyStr){
+    char http_header[2048];
+    sprintf(http_header, "%s 200 OK\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s", HTTP_VERSION, (int)strlen(bodyStr), bodyStr);
+    int iResult;
+    iResult = send(client_socket, http_header, strlen(http_header), 0);
+    free(http_header);
+    return iResult;
 }
-
 
 int main() {
 
@@ -72,10 +77,9 @@ int main() {
 
     printf("Server is listening on port 8001...\n");
 
-    char httpversion[256] = "HTTP/1.1";
 
     char notfound_response[256];
-    sprintf(notfound_response, "%s %s", httpversion, "404 NOT FOUND\r\nContent-Type: text/html\r\nContent-Length: 0\r\n\r\n");
+    sprintf(notfound_response, "%s %s", HTTP_VERSION, "404 NOT FOUND\r\nContent-Type: text/html\r\nContent-Length: 0\r\n\r\n");
 
     HashTable *table = createTable();
     insert(table, "MYKEY", "{\"name\": \"emma\"}");
@@ -121,13 +125,7 @@ int main() {
                 iResult = send(client_socket, notfound_response, strlen(notfound_response), 0);
             }
             else{
-                char response_data[2048];
-                sprintf(response_data, val);
-                char http_header[2048];
-                sprintf(http_header, "%s 200 OK\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s", httpversion, (int)strlen(response_data), response_data);
-                iResult = send(client_socket, http_header, strlen(http_header), 0);
-                free(http_header);
-                free(response_data);
+                iResult = sendOKresponse(client_socket, val);
             }
         }
         else if(strcmp(method, "PUT") == 0){
@@ -136,7 +134,7 @@ int main() {
                 printf("ERROR");
             }
             insert(table, key, body);
-            iResult = sendOKresponse("succesfully cached");
+            iResult = sendOKresponse(client_socket, "succesfully cached");
         }
 
         free(key);
