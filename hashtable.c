@@ -14,6 +14,7 @@ typedef struct {
     HashItem **items;
     int size;
     int count;
+    CRITICAL_SECTION lock;
 } HashTable;
 
 HashTable* createTable(){
@@ -21,23 +22,28 @@ HashTable* createTable(){
     table->size = TABLE_SIZE;
     table->count = 0;
     table->items = (HashItem**) calloc(table->size, sizeof(HashItem*));
+    InitializeCriticalSection(&table->lock);
     return table;
 }
 
 char* get(HashTable *table, const char *key){
+    EnterCriticalSection(&table->lock);
     int i = 0; 
     while(i < table->count){
         HashItem *item = table->items[i];
         if(item != NULL && strcmp(item->key, key) == 0){
+            LeaveCriticalSection(&table->lock);
             return item->value;
         }
         i++;
     }
 
+    LeaveCriticalSection(&table->lock);
     return NULL;
 }
 
 int insert(HashTable *table, char *key, char *val, int cacheSeconds){
+    EnterCriticalSection(&table->lock);
     int i = 0;
     int count = table->count;
     while(i < count){
@@ -46,6 +52,7 @@ int insert(HashTable *table, char *key, char *val, int cacheSeconds){
         if(strcmp(item->key, key) == 0){
             free(item->value);
             item->value = strdup(val);
+            LeaveCriticalSection(&table->lock);
             return 0;
         }
         i++;
@@ -54,6 +61,7 @@ int insert(HashTable *table, char *key, char *val, int cacheSeconds){
     HashItem *item = (HashItem*) malloc(sizeof(HashItem));
     if(item == NULL){
         printf("Memory allocation failure for hashtable item insert");
+        LeaveCriticalSection(&table->lock);
         return 1;
     }
     item->key = strdup(key);
@@ -62,6 +70,7 @@ int insert(HashTable *table, char *key, char *val, int cacheSeconds){
     item->insertionTime = time(NULL);
     table->items[count] = item;
     table->count++;
+    LeaveCriticalSection(&table->lock);
     return 0;
 }
 
@@ -75,7 +84,7 @@ DWORD WINAPI cacheCleanup(LPVOID arg){
         while(i < table->count){
             HashItem *item = table->items[i];
             if(item != NULL && difftime(now, item->insertionTime) > item->cacheSeconds){
-                printf("Now removing cache with key: %s\n", item->key);
+                printf("Expired cache removed after %d seconds by key: %s\n",item->cacheSeconds, item->key);
                 free(item->key);
                 free(item->value);
                 free(item);
