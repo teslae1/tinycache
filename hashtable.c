@@ -1,9 +1,13 @@
 
 #define TABLE_SIZE 100
+#include <time.h>
+#include <windows.h>
 
 typedef struct {
     char *key;
     char *value;
+    int cacheSeconds;
+    time_t insertionTime;
 } HashItem;
 
 typedef struct {
@@ -33,7 +37,7 @@ char* get(HashTable *table, const char *key){
     return NULL;
 }
 
-int insert(HashTable *table, char *key, char *val){
+int insert(HashTable *table, char *key, char *val, int cacheSeconds){
     int i = 0;
     int count = table->count;
     while(i < count){
@@ -54,7 +58,16 @@ int insert(HashTable *table, char *key, char *val){
     }
     item->key = strdup(key);
     item->value = strdup(val);
+    item->cacheSeconds = cacheSeconds;
+    item->insertionTime = time(NULL);
     table->items[count] = item;
     table->count++;
     return 0;
+}
+
+DWORD WINAPI cacheCleanup(LPVOID arg){
+    while(1){
+        Sleep(1000);
+        printf("CLEAN LOOP TICK");
+    }
 }

@@ -13,7 +13,7 @@
 char* readBody(char *buffer, int bytes_read){
     int content_length = 0;
     //split buffer into string seperated by \r\n
-    char *header = strtok(buffer, "\r\n");
+    char *header = strtok(strdup(buffer), "\r\n");
     char *secondLastRead;
     while(header != NULL && header[0] != '\0'){
         if(strncmp(header, "Content-Length:", 15) == 0){
@@ -125,6 +125,21 @@ clientRequest* extractClientRequest(SOCKET client_socket, int buffer_size)
     return request;
 }
 
+int readCacheSeconds(char *buffer, int bytes_read){
+    char *buffer_copy = strdup(buffer);
+    char *header = strtok(buffer_copy, "\r\n");
+    while(header != NULL && header[0] != '\0'){
+        if(strncmp(header, "cacheSeconds:", 13) == 0){
+            int seconds = atoi(header + 13);
+            free(buffer_copy);
+            return seconds;
+        }
+        header = strtok(NULL, "\r\n");
+    }
+    free(buffer_copy);
+    return 0;
+}
+
 int processRequest(clientRequest* request,SOCKET client_socket, HashTable* table,char* notfound_response){
    char *key = request->path + 1;
    if(strcmp(request->method, "GET") == 0){
@@ -136,11 +151,12 @@ int processRequest(clientRequest* request,SOCKET client_socket, HashTable* table
    }
    else if(strcmp(request->method, "PUT") == 0){
        char *body = readBody(request->buffer, request->bytes_read);
+       int cacheSeconds = readCacheSeconds(request->buffer, request->bytes_read);
        if(body == NULL){
         printf("Error while reading body");
         return 1;
        }
-       int result = insert(table, key, body);
+       int result = insert(table, key, body, cacheSeconds);
        if(result != 0){
         return result;
        }
@@ -154,6 +170,7 @@ int runClientSocketListenLoop(SOCKET server_socket, int buffer_size){
     int iResult;
 
     HashTable *table = createTable();
+    HANDLE cleanup_thread = CreateThread(NULL, 0, cacheCleanup, (void*) table, 0, NULL);
 
     SOCKET client_socket;
     while(1){
@@ -188,6 +205,11 @@ int runClientSocketListenLoop(SOCKET server_socket, int buffer_size){
         free(request->version);
         free(request);
     }
+
+    TerminateThread(cleanup_thread, 0);
+    CloseHandle(cleanup_thread);
+    free(table->items);
+    free(table);
 }
 
 int main() {

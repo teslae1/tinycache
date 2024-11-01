@@ -1,4 +1,3 @@
-compile errors fix
 jreprocessor output:
   "gcc -E main.c -o main.i"
 
@@ -40,8 +39,12 @@ C:\Program Files (x86)\Windows Kits\10\Lib\10.0.19041.0\um\arm64\httpapi.lib
 - [X] check all warnings
 - [X] combine the two codebases nicely
 - [-] supporting cache expiration timing
-  - [-] Incoming header as cache time on put 
-  - [ ] Save as value at hashitem
-  - [ ] Have cleanup thread
+  - [X] Incoming header as cache time on put 
+    - [X] Make sure that the buffer is unmodified from readbody
+  - [X] Save as value at hashitem
+  - [-] Have cleanup thread
+    - [X] Store insertionTime
+    - [X] background run 
+    - [-] cleanup mechanism that compares 
 - [ ] make it public
 - [ ] bragbook entry
