@@ -33,7 +33,7 @@ char* get(HashTable *table, const char *key){
     return NULL;
 }
 
-int insert(HashTable *table, const char *key, const char *val){
+int insert(HashTable *table, char *key, char *val){
     int i = 0;
     int count = table->count;
     while(i < count){
@@ -52,8 +52,8 @@ int insert(HashTable *table, const char *key, const char *val){
         printf("Memory allocation failure for hashtable item insert");
         return 1;
     }
-    item->key = key;
-    item->value = val;
+    item->key = strdup(key);
+    item->value = strdup(val);
     table->items[count] = item;
     table->count++;
     return 0;

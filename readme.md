@@ -37,16 +37,11 @@ C:\Program Files (x86)\Windows Kits\10\Lib\10.0.19041.0\um\arm64\httpapi.lib
   - [X] extract incoming request from client
 - [X] should one free *val inside while loop or is that another part of the systems responsability
 - [X] figure out if for loop inside of hashtable should discard pointers on existing instead of override values?
-- [-] check all warnings
-- [ ] handle null from read body by bad request
-- [ ] in insert - when encountering something that is existing, figure out if should free that
-- [ ] run through entire program an search for things that are not free
-- [ ] combine the two codebases nicely
-- [ ] consider it being thread safe with the iresult reuse
-
-- [ ] consider better dynamic way of handling hashtable
-- [ ] consider supporting cache expiration timing
+- [X] check all warnings
+- [X] combine the two codebases nicely
+- [-] supporting cache expiration timing
+  - [-] Incoming header as cache time on put 
+  - [ ] Save as value at hashitem
+  - [ ] Have cleanup thread
 - [ ] make it public
 - [ ] bragbook entry
-- [ ] consider how multi threading is handled and how to lock thread on incoming key 
-- [ ] https server

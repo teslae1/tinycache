@@ -5,6 +5,9 @@ variables:
   description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus ut maximus ante, eu interdum erat. Nunc lacinia tempus magna, sit amet elementum augue accumsan vel. Ut sed lacus condimentum, tristique leo at, malesuada nisl. Maecenas lectus sapien, imperdiet id aliquam et, porta in mi. Donec at mi ac eros posuere molestie. Morbi mattis leo quis elit tempor, et volutpat tellus egestas. Duis dictum commodo semper. Donec nec tellus dolor. Mauris maximus, metus sit amet aliquet sagittis, purus diam cursus magna, a consequat massa purus sed nulla. Integer aliquam eget neque ut interdum. Nunc vestibulum imperdiet tristique. Nulla molestie, elit lobortis porttitor dignissim, dui quam maximus magna, consectetur luctus quam turpis sed eros. Maecenas aliquam turpis id mattis dictum."
   updatedDescription: "updated description"
 
+headers:
+  "cacheSeconds": "3"
+
 requests:
   - url: $(baseUrl)
     method: put
