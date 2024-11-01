@@ -66,8 +66,32 @@ int insert(HashTable *table, char *key, char *val, int cacheSeconds){
 }
 
 DWORD WINAPI cacheCleanup(LPVOID arg){
+    HashTable *table = (HashTable*)arg;
     while(1){
         Sleep(1000);
-        printf("CLEAN LOOP TICK");
+        EnterCriticalSection(&table->lock);
+        time_t now = time(NULL);
+        int i = 0; 
+        while(i < table->count){
+            HashItem *item = table->items[i];
+            if(item != NULL && difftime(now, item->insertionTime) > item->cacheSeconds){
+                printf("Now removing cache with key: %s\n", item->key);
+                free(item->key);
+                free(item->value);
+                free(item);
+                table->items[i] = NULL;
+                int j = i; 
+                //shift items on right hand side to fill in gap
+                while(j < table->count - 1){
+                    table->items[j] = table->items[j + 1];
+                }
+                table->items[table->count - 1] = NULL;
+                table->count--;
+                i--;
+            }
+            i++;
+        }
+        LeaveCriticalSection(&table->lock);
     }
+    return 0;
 }
