@@ -48,5 +48,5 @@ C:\Program Files (x86)\Windows Kits\10\Lib\10.0.19041.0\um\arm64\httpapi.lib
     - [X] cleanup mechanism that compares 
     - [X] last part of harpi test should test the cache timing
     - [X] make lock 
-- [ ] make it public
+- [-] make it public
 - [ ] bragbook entry
