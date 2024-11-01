@@ -22,7 +22,7 @@ C:\Program Files (x86)\Windows Kits\10\Lib\10.0.19041.0\um\arm64\httpapi.lib
   - [X] code the get method and make sure it works
   - [X] try to respond with json of that data
     - [X] fix get method silent error - compile and run right now errors
-- [-] support setting the value by key
+- [X] support setting the value by key
   - [X] take incoming body value and extract to str
     - finish the readBody method
     - [X] get the content-length
@@ -30,20 +30,17 @@ C:\Program Files (x86)\Windows Kits\10\Lib\10.0.19041.0\um\arm64\httpapi.lib
   - [X] respond ok by the new method
   - [X] reuse that method for the get responsk
 - [X] make sure the incoming request can take into account a big size of json
-- [-] consider extracting some sub functions
+- [X] extracting some sub functions
   - [X] server setup
     - [X] consider disposing serversetup since the data that is being used are subset pointers
   - [X] run socket listen loop
-  - [-] extract incoming request from client
-  - [ ] handle get 
-  - [ ] handle put
-- [ ] make sure error 400 on too big incoming
-- [ ] should one free *val inside while loop or is that another part of the systems responsability
-- [ ] figure out if for loop inside of hashtable should discard pointers on existing instead of override values?
+  - [X] extract incoming request from client
+- [X] should one free *val inside while loop or is that another part of the systems responsability
+- [X] figure out if for loop inside of hashtable should discard pointers on existing instead of override values?
+- [-] check all warnings
 - [ ] handle null from read body by bad request
 - [ ] in insert - when encountering something that is existing, figure out if should free that
 - [ ] run through entire program an search for things that are not free
-- [ ] check all warnings
 - [ ] combine the two codebases nicely
 - [ ] consider it being thread safe with the iresult reuse
 

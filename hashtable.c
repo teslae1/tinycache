@@ -33,22 +33,28 @@ char* get(HashTable *table, const char *key){
     return NULL;
 }
 
-void insert(HashTable *table, const char *key, const char *val){
+int insert(HashTable *table, const char *key, const char *val){
     int i = 0;
     int count = table->count;
     while(i < count){
         HashItem *item = table->items[i];
 
         if(strcmp(item->key, key) == 0){
-            item->value = val;
-            return;
+            free(item->value);
+            item->value = strdup(val);
+            return 0;
         }
         i++;
     }
 
     HashItem *item = (HashItem*) malloc(sizeof(HashItem));
+    if(item == NULL){
+        printf("Memory allocation failure for hashtable item insert");
+        return 1;
+    }
     item->key = key;
     item->value = val;
     table->items[count] = item;
     table->count++;
+    return 0;
 }

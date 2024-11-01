@@ -97,18 +97,17 @@ clientRequest* extractClientRequest(SOCKET* client_socket, int buffer_size)
 {
     clientRequest *request = (clientRequest*) malloc(sizeof(clientRequest));
     request->result = 0;
-    request->method = char[16];
-    char buffer[buffer_size];
+    request->buffer = (char*)malloc(buffer_size);
 
-    request->bytes_read = recv(client_socket, buffer, buffer_size - 1, 0);
+    request->bytes_read = recv(client_socket, request->buffer, buffer_size - 1, 0);
     if(request->bytes_read < 0){
         printf("recv failed: %d\n", WSAGetLastError());
         request->result = 1;
         return request;
     }
-    buffer[request->bytes_read] = '\0';
+    request->buffer[request->bytes_read] = '\0';
     char* buffer_copy = (char *)malloc(buffer_size);
-    strcpy(buffer_copy, buffer);
+    strcpy(buffer_copy, request->buffer);
     char *request_line = strtok(buffer_copy, "\r\n");
 
     if(request_line == NULL){
@@ -117,18 +116,43 @@ clientRequest* extractClientRequest(SOCKET* client_socket, int buffer_size)
         return request;
     }
 
+    request->method = (char*)malloc(16 * sizeof(char));
+    request->path = (char*)malloc(256 * sizeof(char));
+    request->version = (char*)malloc(16 * sizeof(char));
 
-    char method[16], path[256], version[16];
     sscanf(request_line, "%s %s %s", request->method, request->path, request->version);
     free(buffer_copy);
     free(request_line);
     return request;
 }
 
+int processRequest(clientRequest* request,SOCKET* client_socket, HashTable* table,char* notfound_response){
+   char *key = request->path + 1;
+   if(strcmp(request->method, "GET") == 0){
+       char *val = get(table, key);
+       if(val == NULL){
+           return send(client_socket, notfound_response, strlen(notfound_response), 0);
+       }
+       return sendOKresponse(client_socket, val);
+   }
+   else if(strcmp(request->method, "PUT") == 0){
+       char *body = readBody(request->buffer, request->bytes_read);
+       if(body == NULL){
+        printf("Error while reading body");
+        return 1;
+       }
+       int result = insert(table, key, body);
+       if(result != 0){
+        return result;
+       }
+       return sendOKresponse(client_socket, "succesfully cached");
+   }
+}
+
 void runClientSocketListenLoop(SOCKET *server_socket, int buffer_size){
-    int iResult;
     char notfound_response[256];
     sprintf(notfound_response, "%s %s", HTTP_VERSION, "404 NOT FOUND\r\nContent-Type: text/html\r\nContent-Length: 0\r\n\r\n");
+    int iResult;
 
     HashTable *table = createTable();
 
@@ -148,29 +172,7 @@ void runClientSocketListenLoop(SOCKET *server_socket, int buffer_size){
             continue;
         }
 
-            char *key = request->path + 1;
-        if(strcmp(request->method, "GET") == 0){
-            printf("trying to get by key %s\n", key);
-            char *val = get(table, key);
-            printf("got val: %s\n", val);
-            if(val == NULL){
-                printf("did not find - now sending 404 response");
-                iResult = send(client_socket, notfound_response, strlen(notfound_response), 0);
-            }
-            else{
-                iResult = sendOKresponse(client_socket, val);
-            }
-        }
-        else if(strcmp(request->method, "PUT") == 0){
-            char *body = readBody(request->buffer, request->bytes_read);
-            if(body == NULL){
-                printf("ERROR");
-            }
-            insert(table, key, body);
-            iResult = sendOKresponse(client_socket, "succesfully cached");
-        }
-
-        free(key);
+        iResult = processRequest(request, client_socket, table, notfound_response);
 
         if(iResult == SOCKET_ERROR){
             printf("Send failed: %d\n", WSAGetLastError());
