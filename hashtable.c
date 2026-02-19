@@ -93,6 +93,7 @@ DWORD WINAPI cacheCleanup(LPVOID arg){
                 //shift items on right hand side to fill in gap
                 while(j < table->count - 1){
                     table->items[j] = table->items[j + 1];
+                    j++;
                 }
                 table->items[table->count - 1] = NULL;
                 table->count--;

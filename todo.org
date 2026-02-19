@@ -1,0 +1,8 @@
+
+- [ ] try claude code
+- [ ] add to calendar to opt out again
+  - auto renew on 19/3/2026
+- [ ] figure out why its failing
+- [ ] consider free setup
+gcc main.c -g -o main.exe -lws2_32
+
