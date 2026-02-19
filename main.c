@@ -3,7 +3,7 @@
 #include <string.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#include "hashtable.c"
+#include "keyValueStore.c"
 
 #pragma comment(lib, "ws2_32.lib")
 #define BUFFER_SIZE 2048
@@ -13,7 +13,8 @@
 char* readBody(char *buffer, int bytes_read){
     int content_length = 0;
     //split buffer into string seperated by \r\n
-    char *header = strtok(strdup(buffer), "\r\n");
+    char *buffer_copy = strdup(buffer);
+    char *header = strtok(buffer_copy, "\r\n");
     char *secondLastRead;
     while(header != NULL && header[0] != '\0'){
         if(strncmp(header, "Content-Length:", 15) == 0){
@@ -24,14 +25,18 @@ char* readBody(char *buffer, int bytes_read){
         header = strtok(NULL, "\r\n");
     }
     if(content_length == 0){
+        free(buffer_copy);
         return NULL;
     }
-    return secondLastRead;
+
+    char *body = strdup(secondLastRead);
+    free(buffer_copy);
+    return body;
 }
 
 int sendOKresponse(SOCKET client_socket, char* bodyStr){
     char http_header[2048];
-    sprintf(http_header, "%s 200 OK\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s", HTTP_VERSION, (int)strlen(bodyStr), bodyStr);
+    sprintf(http_header, "%s 200 OK\r\nContent-Type: application/json\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s", HTTP_VERSION, (int)strlen(bodyStr), bodyStr);
     int iResult;
     iResult = send(client_socket, http_header, strlen(http_header), 0);
     return iResult;
@@ -96,6 +101,10 @@ clientRequest* extractClientRequest(SOCKET client_socket, int buffer_size)
 {
     clientRequest *request = (clientRequest*) malloc(sizeof(clientRequest));
     request->result = 0;
+    request->method = NULL;
+    request->path = NULL;
+    request->version = NULL;
+    request->buffer = NULL;
     request->buffer = (char*)malloc(buffer_size);
 
     request->bytes_read = recv(client_socket, request->buffer, buffer_size - 1, 0);
@@ -112,6 +121,7 @@ clientRequest* extractClientRequest(SOCKET client_socket, int buffer_size)
     if(request_line == NULL){
         printf("no request line");
         request->result = 1;
+        free(buffer_copy);
         return request;
     }
 
@@ -121,8 +131,15 @@ clientRequest* extractClientRequest(SOCKET client_socket, int buffer_size)
 
     sscanf(request_line, "%s %s %s", request->method, request->path, request->version);
     free(buffer_copy);
-    free(request_line);
     return request;
+}
+
+void freeClientRequest(clientRequest *request){
+    free(request->buffer);
+    free(request->method);
+    free(request->path);
+    free(request->version);
+    free(request);
 }
 
 int readCacheSeconds(char *buffer, int bytes_read){
@@ -140,14 +157,16 @@ int readCacheSeconds(char *buffer, int bytes_read){
     return 0;
 }
 
-int processRequest(clientRequest* request,SOCKET client_socket, HashTable* table,char* notfound_response){
+int processRequest(clientRequest* request,SOCKET client_socket, KeyValueTable* table,char* notfound_response){
    char *key = request->path + 1;
    if(strcmp(request->method, "GET") == 0){
        char *val = get(table, key);
        if(val == NULL){
            return send(client_socket, notfound_response, strlen(notfound_response), 0);
        }
-       return sendOKresponse(client_socket, val);
+       int response = sendOKresponse(client_socket, val);
+       free(val);
+       return response;
    }
    else if(strcmp(request->method, "PUT") == 0){
        char *body = readBody(request->buffer, request->bytes_read);
@@ -157,6 +176,7 @@ int processRequest(clientRequest* request,SOCKET client_socket, HashTable* table
         return 1;
        }
        int result = insert(table, key, body, cacheSeconds);
+       free(body);
        if(result != 0){
         return result;
        }
@@ -166,10 +186,10 @@ int processRequest(clientRequest* request,SOCKET client_socket, HashTable* table
 
 int runClientSocketListenLoop(SOCKET server_socket, int buffer_size){
     char notfound_response[256];
-    sprintf(notfound_response, "%s %s", HTTP_VERSION, "404 NOT FOUND\r\nContent-Type: text/html\r\nContent-Length: 0\r\n\r\n");
+    sprintf(notfound_response, "%s %s", HTTP_VERSION, "404 NOT FOUND\r\nContent-Type: text/html\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
     int iResult;
 
-    HashTable *table = createTable();
+    KeyValueTable *table = createTable();
     HANDLE cleanup_thread = CreateThread(NULL, 0, cacheCleanup, (void*) table, 0, NULL);
 
     SOCKET client_socket;
@@ -185,6 +205,7 @@ int runClientSocketListenLoop(SOCKET server_socket, int buffer_size){
         clientRequest *request = extractClientRequest(client_socket, buffer_size);
         if(request->result == 1){
             closesocket(client_socket);
+            freeClientRequest(request);
             continue;
         }
 
@@ -193,17 +214,14 @@ int runClientSocketListenLoop(SOCKET server_socket, int buffer_size){
         if(iResult == SOCKET_ERROR){
             printf("Send failed: %d\n", WSAGetLastError());
             closesocket(client_socket);
+            freeClientRequest(request);
             continue;
         }
 
         Sleep(100);
 
         closesocket(client_socket);
-        free(request->buffer);
-        free(request->method);
-        free(request->path);
-        free(request->version);
-        free(request);
+        freeClientRequest(request);
     }
 
     TerminateThread(cleanup_thread, 0);
@@ -216,6 +234,7 @@ int main() {
 
     serverSetup *setup = setupServerListen(PORT);
     if(setup->result == SOCKET_ERROR){
+        free(setup);
         return 1;
     }
 
